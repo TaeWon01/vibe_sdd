@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<form action="/add" method="post" class="add-form">
+  <input type="text" name="text" placeholder="할 일을 입력하세요" required>
+  <button type="submit">추가</button>
+</form>
+
+<ul class="tasks">
+  {% for t in tasks %}
+  <li class="task {% if t.done %}done{% endif %}">
+    <span class="text">{{ t.text }}</span>
+    <div class="actions">
+      <form action="/toggle/{{ t.id }}" method="post" style="display:inline">
+        <button type="submit">{% if t.done %}취소{% else %}완료{% endif %}</button>
+      </form>
+      <form action="/delete/{{ t.id }}" method="post" style="display:inline">
+        <button type="submit" class="danger">삭제</button>
+      </form>
+    </div>
+  </li>
+  {% else %}
+  <li class="empty">할 일이 없습니다.</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

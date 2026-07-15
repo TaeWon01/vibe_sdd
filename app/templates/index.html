@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘의 할 일</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; background: #f7f7f7; }
+    .container { max-width: 720px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .filters button { margin-right: 8px; }
+    .todo-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .todo-item { display: flex; align-items: center; justify-content: space-between; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    .todo-item.completed { text-decoration: line-through; color: #999; background: #f3f3f3; }
+    .actions button { margin-left: 8px; }
+    .empty-state { padding: 20px; text-align: center; color: #666; }
+    @media (max-width: 360px) { body { padding: 12px; } .container { padding: 16px; } .header { flex-direction: column; align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>오늘의 할 일</h1>
+      <div id="remaining-count">남은 할 일 0개</div>
+    </div>
+    <form id="todo-form">
+      <input id="todo-input" maxlength="100" placeholder="할 일을 입력하세요" style="width: 70%; padding: 8px;" />
+      <button type="submit">추가</button>
+    </form>
+    <div id="message" style="margin-top: 8px; color: #c44;"></div>
+    <div class="filters" style="margin-top: 16px;">
+      <button data-status="all">전체</button>
+      <button data-status="active">진행중</button>
+      <button data-status="completed">완료</button>
+    </div>
+    <div id="todo-list" class="todo-list"></div>
+  </div>
+  <script>
+    let currentStatus = 'all';
+    const todoForm = document.getElementById('todo-form');
+    const todoInput = document.getElementById('todo-input');
+    const todoList = document.getElementById('todo-list');
+    const remainingCount = document.getElementById('remaining-count');
+    const message = document.getElementById('message');
+
+    async function fetchTodos() {
+      const response = await fetch(`/api/todos?status=${currentStatus}`);
+      const todos = await response.json();
+      renderTodos(todos);
+      updateRemainingCount(todos);
+    }
+
+    function updateRemainingCount(todos) {
+      const activeCount = todos.filter(todo => !todo.completed).length;
+      remainingCount.textContent = `남은 할 일 ${activeCount}개`;
+    }
+
+    function renderTodos(todos) {
+      if (!todos.length) {
+        todoList.innerHTML = '<div class="empty-state">할 일이 없습니다. 새 할 일을 추가해보세요.</div>';
+        return;
+      }
+      todoList.innerHTML = todos.map(todo => `
+        <div class="todo-item ${todo.completed ? 'completed' : ''}">
+          <span>${todo.title}</span>
+          <div class="actions">
+            <button data-action="toggle" data-id="${todo.id}">${todo.completed ? '되돌리기' : '완료'}</button>
+            <button data-action="delete" data-id="${todo.id}">삭제</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    todoForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      message.textContent = '';
+      const title = todoInput.value.trim();
+      if (!title) {
+        message.textContent = '할 일을 입력해 주세요.';
+        return;
+      }
+      if (title.length > 100) {
+        message.textContent = '할 일 제목은 100자 이하로 입력해 주세요.';
+        return;
+      }
+      const response = await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        message.textContent = data.detail || '추가에 실패했습니다.';
+        return;
+      }
+      todoInput.value = '';
+      await fetchTodos();
+    });
+
+    todoList.addEventListener('click', async (event) => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      const id = button.getAttribute('data-id');
+      const action = button.getAttribute('data-action');
+      if (action === 'toggle') {
+        const response = await fetch(`/api/todos/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: true })
+        });
+        if (response.ok) {
+          await fetchTodos();
+        }
+      } else if (action === 'delete') {
+        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+        const response = await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          await fetchTodos();
+        }
+      }
+    });
+
+    document.querySelectorAll('.filters button').forEach(button => {
+      button.addEventListener('click', async () => {
+        currentStatus = button.getAttribute('data-status');
+        await fetchTodos();
+      });
+    });
+
+    fetchTodos();
+  </script>
+</body>
+</html>

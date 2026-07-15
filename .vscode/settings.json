@@ -1,3 +1,14 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "chat.promptFilesRecommendations": {
+    "speckit.plan": true,
+    "speckit.tasks": true,
+    "speckit.constitution": true,
+    "speckit.implement": true,
+    "speckit.specify": true
+  },
+  "chat.tools.terminal.autoApprove": {
+    ".specify/scripts/bash/": true,
+    ".specify/scripts/powershell/": true
+  }
 }
